@@ -1,0 +1,6 @@
+sdk: ^2.0.0-alpha.199
+prefixes:
+  usb-serial: toit-usb-serial
+packages:
+  toit-usb-serial:
+    path: ..
