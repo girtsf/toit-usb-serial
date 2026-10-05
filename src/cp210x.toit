@@ -63,6 +63,9 @@ class Cp210x extends PortBase_:
   The $data-bits (5 to 8), $parity (one of the Port.PARITY- constants) and
     $stop-bits (1 or 2) configure the line.
 
+  Received data is buffered in the background, in $read-buffer-size bytes;
+    see `usb.Device.in-stream`.
+
   With `--no-check-ids` the vendor and product ids are not checked, for clones
     with other ids. The interface must then have the CP210x shape: vendor
     class, a bulk IN and a bulk OUT endpoint.
@@ -72,6 +75,7 @@ class Cp210x extends PortBase_:
       --data-bits/int=8
       --parity/int=Port.PARITY-NONE
       --stop-bits/int=1
+      --read-buffer-size/int=4096
       --interface-number/int=0
       --check-ids/bool=true:
     if check-ids and not matches device: throw "not a CP210x: $device"
@@ -84,16 +88,22 @@ class Cp210x extends PortBase_:
       if descriptor.class-code != 0xFF or descriptor.endpoints.size != 2 or bulk.size != 2:
         throw "not a CP210x interface: $descriptor"
     line := line-control --data-bits=data-bits --parity=parity --stop-bits=stop-bits
-    super device descriptor
-    control-out_ REQ-IFC-ENABLE_ 1
-    this.baud-rate = baud-rate
-    control-out_ REQ-SET-LINE-CTL_ line
-    write-modem-control_
-    purge
+    super device descriptor --read-buffer-size=read-buffer-size
+    start_:
+      control-out_ REQ-IFC-ENABLE_ 1
+      this.baud-rate = baud-rate
+      control-out_ REQ-SET-LINE-CTL_ line
+      write-modem-control_
+      purge
 
   baud-rate -> int: return baud-rate_
 
-  /** Changes the line to $new-rate baud. */
+  /**
+  Changes the line to $new-rate baud.
+
+  The chip rounds the rate to what it can do and rejects nothing;
+    $read-baud-rate tells what it settled on.
+  */
   baud-rate= new-rate/int -> none:
     data := ByteArray 4
     io.LITTLE-ENDIAN.put-uint32 data 0 new-rate

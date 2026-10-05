@@ -56,8 +56,8 @@ supports device/usb.Device -> bool:
 /**
 Opens $device as a serial $Port at $baud-rate.
 
-See $Ch34x.constructor and $Cp210x.constructor for $data-bits, $parity and
-  $stop-bits.
+See $Ch34x.constructor and $Cp210x.constructor for $data-bits, $parity,
+  $stop-bits and $read-buffer-size.
 
 Picks the driver by vendor and product id. Throws if $device is not a bridge
   this package knows; use $supports to check first.
@@ -67,6 +67,7 @@ open device/usb.Device
     --data-bits/int=8
     --parity/int=Port.PARITY-NONE
     --stop-bits/int=1
+    --read-buffer-size/int=4096
     -> Port:
   if Ch34x.matches device:
     return Ch34x device
@@ -74,10 +75,12 @@ open device/usb.Device
         --data-bits=data-bits
         --parity=parity
         --stop-bits=stop-bits
+        --read-buffer-size=read-buffer-size
   if Cp210x.matches device:
     return Cp210x device
         --baud-rate=baud-rate
         --data-bits=data-bits
         --parity=parity
         --stop-bits=stop-bits
+        --read-buffer-size=read-buffer-size
   throw "no USB-UART driver for $device"

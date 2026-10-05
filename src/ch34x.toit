@@ -73,6 +73,9 @@ class Ch34x extends PortBase_:
     $stop-bits (1 or 2) can only be changed from 8N1 on chip versions 0x30
     and above; older chips throw "UNSUPPORTED".
 
+  Received data is buffered in the background, in $read-buffer-size bytes;
+    see `usb.Device.in-stream`.
+
   With `--no-check-ids` the vendor and product ids are not checked, for clones
     with other ids. The first interface must then have the CH34x shape: vendor
     class, a bulk IN, a bulk OUT and an interrupt IN endpoint.
@@ -82,8 +85,10 @@ class Ch34x extends PortBase_:
       --data-bits/int=8
       --parity/int=Port.PARITY-NONE
       --stop-bits/int=1
+      --read-buffer-size/int=4096
       --check-ids/bool=true:
     if check-ids and not matches device: throw "not a CH34x: $device"
+    if device.interfaces.is-empty: throw "no interface: $device"
     descriptor/usb.InterfaceDescriptor := device.interfaces[0]
     if not check-ids:
       endpoints := descriptor.endpoints
@@ -97,10 +102,11 @@ class Ch34x extends PortBase_:
     version = version-bytes.size > 0 ? version-bytes[0] : 0
     if line-control != LCR-8N1_ and version < 0x30: throw "UNSUPPORTED"
     lcr_ = line-control
-    super device descriptor
-    control-out_ REQ-SERIAL-INIT_ 0 0
-    this.baud-rate = baud-rate
-    write-modem-control_
+    super device descriptor --read-buffer-size=read-buffer-size
+    start_:
+      control-out_ REQ-SERIAL-INIT_ 0 0
+      this.baud-rate = baud-rate
+      write-modem-control_
 
   baud-rate -> int: return baud-rate_
 
