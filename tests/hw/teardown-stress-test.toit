@@ -16,12 +16,15 @@ import system
 import usb.host as usb
 
 main:
-  // The first installs allocate a few KB that live until reboot.
-  5.repeat: round --open-device
-  free-before := free-heap
-  [0, 20, 50, 100, 200, 300, 500].do: | delay/int |
-    3.repeat: round --delay=delay
-  3.repeat: round --open-device
+  // The first batch absorbs one-time allocations (the first installs keep
+  //   a few KB until reboot). Other processes shift the free heap by a page
+  //   now and then; a real leak shows in every batch, so the smaller of two
+  //   consecutive losses is what counts.
+  batch
+  free := [free-heap]
+  2.repeat:
+    batch
+    free.add free-heap
   host := usb.Host
   device/usb.Device? := null
   try:
@@ -29,13 +32,17 @@ main:
       device = host.wait-for-device
   finally:
     host.close
-  // Measure before printing: a print can grow logd's buffer.
-  free-after := free-heap
   print "still works: $device"
-  print "free heap $free-before -> $free-after"
+  print "free heap after each batch: $free"
   // A Host costs about 13 KB; losing even part of one per round would show.
-  expect free-before - free-after < 2_000
+  expect (min free[0] - free[1] free[1] - free[2]) < 2_000
   print "all tests passed"
+
+/** Opens and closes the host 24 times at different points. */
+batch -> none:
+  [0, 20, 50, 100, 200, 300, 500].do: | delay/int |
+    3.repeat: round --delay=delay
+  3.repeat: round --open-device
 
 round --delay/int=0 --open-device/bool=false -> none:
   host := usb.Host
@@ -49,15 +56,17 @@ round --delay/int=0 --open-device/bool=false -> none:
     host.close
 
 /**
-Returns the free system heap.
+Returns the free system heap plus this process's own heap.
 
-Other processes (WiFi, logd) make it dip by a few KB at times, so this
-  takes the highest of a few samples.
+The process's heap grows by 4 KB pages as the test runs, which is not USB
+  memory. Other processes (WiFi, logd) make it dip by a few KB at times, so
+  this takes the highest of a few samples.
 */
 free-heap -> int:
   result := 0
   3.repeat:
     if it > 0: sleep --ms=200
     stats := system.process-stats --gc
-    result = max result stats[system.STATS-INDEX-SYSTEM-FREE-MEMORY]
+    free := stats[system.STATS-INDEX-SYSTEM-FREE-MEMORY] + stats[system.STATS-INDEX-RESERVED-MEMORY]
+    result = max result free
   return result
