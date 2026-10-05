@@ -1,5 +1,7 @@
 name: usb-serial
 description: Drivers for USB-UART bridge chips (CH34x, CP210x) attached to a USB host.
+license: MIT
 environment:
+  # TODO: raise to the first SDK release that ships `usb.host`.
   sdk: ^2.0.0-alpha.199
 dependencies: {}

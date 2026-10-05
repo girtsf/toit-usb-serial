@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Girts Folkmanis.
+// Use of this source code is governed by an MIT-style license that can be
+// found in the LICENSE file.
+
 // Checks the CH34x prescaler/divisor math against the chip's own formula.
 
 import expect show *

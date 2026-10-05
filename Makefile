@@ -7,6 +7,7 @@ all: test analyze
 install-pkgs:
 	$(TOIT) pkg install
 	cd tests && $(TOIT) pkg install
+	cd examples && $(TOIT) pkg install
 
 test: install-pkgs
 	@for test in tests/*-test.toit; do \
@@ -14,8 +15,12 @@ test: install-pkgs
 		$(TOIT) run "$$test" || exit 1; \
 	done
 
-analyze:
-	$(TOIT) analyze src/*.toit
-	cd tests && $(TOIT) analyze *.toit
+# One file per call: files from different project roots can resolve imports
+# wrongly when analyzed together.
+analyze: install-pkgs
+	@for file in src/*.toit tests/*.toit tests/hw/*.toit examples/*.toit; do \
+		echo "Analyzing $$file"; \
+		$(TOIT) analyze "$$file" || exit 1; \
+	done
 
 .PHONY: all install-pkgs test analyze
