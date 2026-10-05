@@ -7,7 +7,9 @@
 // swallow it.
 //
 // Output, one line each:
-//   TOIT-USB-TEST <n> <uptime-us>   every second
+//   TOIT-USB-TEST <n> <uptime-us> <mac>
+//                                   every second, mac in hex: tests use it to
+//                                   tell whether the target is their own board
 //   ECHO <line>                     for every line received
 //   PONG                            for "ping"
 //   BURST <i>/<n>                   n times, for "burst <n>"
@@ -15,23 +17,22 @@
 //                                   console is not 8-bit clean) + "\n", for "blob <n>"
 //   ERR <line>                      for anything that fails to parse
 
+import encoding.hex
+import esp32
 import io
 
 MARKER ::= "TOIT-USB-TEST"
 
-/**
-Starts the heartbeat and the command loop as tasks.
-
-With `--background` they don't keep the process alive.
-*/
-start-target --background/bool=false -> none:
-  task --background=background:: heartbeat
-  task --background=background:: echo-loop
+/** Starts the heartbeat and the command loop as tasks. */
+start-target -> none:
+  task:: heartbeat
+  task:: echo-loop
 
 heartbeat -> none:
+  mac := hex.encode esp32.mac-address
   n := 0
   while true:
-    io.stdout.write "$MARKER $n $Time.monotonic-us\n"
+    io.stdout.write "$MARKER $n $Time.monotonic-us $mac\n"
     n++
     sleep --ms=1000
 

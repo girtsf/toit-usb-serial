@@ -5,6 +5,8 @@
 // The USB-UART bridge tests, shared by bridge-test.toit (two boards) and
 // loopback-test.toit (one board).
 
+import encoding.hex
+import esp32
 import expect show *
 import io
 import monitor
@@ -83,6 +85,13 @@ test-conversation -> none:
 /** Modem control: RTS alone resets the target, which then prints its ROM banner. */
 test-reset -> none:
   with-port: | port/Port |
+    // In a loopback setup RTS would hold this board in reset until power
+    //   is cut: nothing is left to release it.
+    heartbeat := read-prefixed port.in "TOIT-USB-TEST"
+    parts := heartbeat.trim.split " "
+    if parts.size < 4: throw "target sends no MAC, reinstall usb-target: $heartbeat"
+    if parts[3] == (hex.encode esp32.mac-address):
+      throw "the target is this board, run loopback-test.toit instead"
     expect-not port.rts
     port.set-modem-control --rts --no-dtr
     expect port.rts
@@ -91,7 +100,7 @@ test-reset -> none:
     print "rom: $(read-prefixed port.in "ESP-ROM")"
     print "back up: $(read-prefixed port.in "TOIT-USB-TEST")"
 
-/** A read that times out must cancel its transfer without breaking the next one. */
+/** Reads that time out must leave the port working. */
 test-timeouts -> none:
   with-port: | port/Port |
     timeouts := 0
@@ -109,8 +118,9 @@ test-timeouts -> none:
     print "still alive: $(read-prefixed port.in "TOIT-USB-TEST")"
 
 /**
-Reads that time out in the middle of a burst must not lose data: bytes that
-  arrive just before a cancel are kept for the next read.
+Reads that time out in the middle of a burst must not lose data: the
+  background stream keeps receiving, and whatever arrived goes to the next
+  read.
 */
 test-no-loss-across-timeouts -> none:
   with-port: | port/Port |

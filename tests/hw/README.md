@@ -12,7 +12,7 @@ supplying VBUS (on many devkits that means bridging a 5V jumper or diode).
   through its own USB-UART bridge, running `target.toit` as a container.
 
 The target answers on its console UART (see `target-lib.toit`): a
-`TOIT-USB-TEST <n> <us>` heartbeat every second, `PONG` for `ping`,
+`TOIT-USB-TEST <n> <us> <mac>` heartbeat every second, `PONG` for `ping`,
 `BURST i/n` lines for `burst n`, `n` bytes for `blob n`, and `ECHO <line>`
 for everything else.
 
@@ -23,11 +23,45 @@ Install it on the target board and run the test on the host board:
 
 `bridge-test.toit` (the tests are in `bridge-tests.toit`) covers control
 transfers, bulk IN and OUT, a binary blob, the RTS reset (the target's ROM
-banner comes back), read timeouts that have to cancel a pending transfer, no
-data loss when reads time out mid-burst, closing the port while another
+banner comes back), read timeouts, no data loss when reads time out
+mid-burst, closing the port while another
 task is blocked reading, and three close/reopen rounds of the whole stack.
 
+## One board
+
+`loopback-test.toit` needs a single ESP32-S3 devkit with two USB ports: a
+cable from its native USB port to its own USB-UART port, and power from
+somewhere else (its 5V pin, for example). The board is both host and target:
+
+    jag container install usb-target tests/hw/target.toit -d <board>
+    jag run tests/hw/loopback-test.toit -d <board>
+
+The target must run as a container, not in the test program: writing to
+the console blocks the writing process while UART0 sends, which would
+starve the test's reads. It runs the bridge tests without the RTS reset,
+which would hold the board in reset until its power is cut
+(`bridge-test.toit` refuses to run when the heartbeat carries its own
+MAC). logd copies prints to the console, so the test's own output shows up
+in what the bridge receives; the tests only look at lines with their own
+prefixes.
+
 ## More tests
+
+On the two-board setup, after `bridge-test.toit`:
+
+- `corner-test.toit` closes the port, the device and the host while data
+  is flowing and a reader is busy, closes the port under a long write,
+  interrupts opens at every step with timeouts, lets a spawned process
+  exit with everything open, leaves a Host to its finalizer, and checks
+  misuse (a second Host, a second port, `transfer-in` on a streamed
+  endpoint). It ends with a heap check.
+- `load-test.toit` sends a 20 KB blob to a reader that keeps pausing,
+  echoes lines while writing, runs control transfers during a burst,
+  interrupts control transfers, changes the baud rate while data arrives,
+  closes the device under a task busy with control transfers, and starts
+  stdin before and while a Host is open.
+
+Any setup:
 
 - `teardown-stress-test.toit` opens and closes the host at different points
   (right away, during enumeration, after opening the device) and checks that
