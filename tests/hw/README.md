@@ -24,8 +24,8 @@ Install it on the target board and run the test on the host board:
 `bridge-test.toit` (the tests are in `bridge-tests.toit`) covers control
 transfers, bulk IN and OUT, a binary blob, the RTS reset (the target's ROM
 banner comes back), read timeouts, no data loss when reads time out
-mid-burst, closing the port while another
-task is blocked reading, and three close/reopen rounds of the whole stack.
+mid-burst, closing the port while another task is blocked reading, and three
+close/reopen rounds of the whole stack.
 
 ## One board
 
@@ -60,6 +60,11 @@ On the two-board setup, after `bridge-test.toit`:
   interrupts control transfers, changes the baud rate while data arrives,
   closes the device under a task busy with control transfers, and starts
   stdin before and while a Host is open.
+- `soak-test.toit` runs for about 10 minutes: five minutes of random
+  echoes, bursts and blobs on one port, all checked byte for byte, then
+  five minutes of cycles that close the port, the device or the host at a
+  random moment while data flows. It prints its random seed and checks
+  that the heap stays put.
 
 Any setup:
 
