@@ -4,6 +4,9 @@ Drivers for USB-UART bridge chips attached to an ESP32 running as a USB
 host. The bridge shows up as a `Port` with an `io.Reader` and an
 `io.Writer`, plus DTR/RTS control.
 
+Note: this needs [USB host support PR](https://github.com/toitlang/toit/pull/3276)
+to land in the SDK.
+
 Supported chips:
 
 | Driver   | Chips                                           | VID:PID                                                          |
@@ -24,11 +27,6 @@ built with `CONFIG_TOIT_ENABLE_USB_HOST` on an ESP32-S2 or ESP32-S3 (both
 tested). The host takes over the USB PHY, which means the USB Serial/JTAG
 console is gone while a `usb.Host` is open; use the UART console or run over
 WiFi.
-
-On the ESP32-S2, the stock firmware configuration keeps the Toit heap in
-internal RAM even on boards with PSRAM, which leaves little room for
-programs. Build it with `CONFIG_TOIT_SPIRAM_HEAP=y` and
-`CONFIG_SPIRAM_USE_MALLOC=y` if the board has PSRAM.
 
 The bridge is powered from the host's USB port, and many ESP32 devkits
 don't supply VBUS on it: a diode between the connector and the 5V rail only
